@@ -15,24 +15,37 @@ const notes = simDB.initialize(data);
 // Get All (and search by query)
 /* ========== GET/READ ALL NOTES ========== */
 router.get('/notes', (req, res, next) => {
-  const { searchTerm } = req.query;
-  knex
-    .select('id','title','content','created')
+  const {searchTerm, folderId} = req.query
+  knex.select('notes.id', 'title', 'content', 'folder_id', 'folders.name as folder_name')
     .from('notes')
-    .whereRaw(`LOWER(title) LIKE '%${searchTerm? searchTerm.toLowerCase() : ''}%'`)
-    .orWhereRaw(`LOWER(content) LIKE '%${searchTerm?searchTerm.toLowerCase() : ''}%'`)
-    .then(notes => {
-      res.status(200).json(notes)
+    .leftJoin('folders', 'notes.folder_id', 'folders.id')
+    .where(function () {
+      if (searchTerm) {
+        this.where('title', 'like', `%${searchTerm}%`);
+      }
     })
-    .catch(err => next(err))
+    .where(function() {
+      if(folderId){
+        this.where('folder_id',folderId)
+      }
+    })
+    .orderBy('notes.id')
+    .then(results => {
+      res.json(results);
+    })
+    .catch(err => {
+      console.error(err);
+    });
 });
 
 /* ========== GET/READ SINGLE NOTES ========== */
 router.get('/notes/:id', (req, res, next) => {
   const noteId = req.params.id;
   knex
-    .select('id','title','content','created')
+    .select('id as note_id','title','content','folder_id',
+      'folders.name as folder_name')
     .from('notes')
+    .join('folders','')
     .where({id:noteId})
     .then(note => {
       if(note.length !==0){

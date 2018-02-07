@@ -5,20 +5,28 @@ console.log('..............')
 console.log('..............')
 
 //search item
-// const searchTerm = 'lorem'
+const searchTerm = 'lorem'
 
-// filter result
-// knex
-//   .select('id','title','content','created')
-//   .from('notes')
-//   .whereRaw(`LOWER(title) LIKE '%${searchTerm.toLowerCase()}%'`)
-//   .orWhereRaw(`LOWER(content) LIKE '%${searchTerm.toLowerCase()}%'`)
-//   .then(res => {
-//     console.log(JSON.stringify(res,null,4))
-//   })
-//   .catch(err => {
-//     console.log(err)}
-//   )
+
+
+const deathNotes = {
+  searchNote(searchTerm) {
+    return knex
+      .select('id','title','content','created')
+      .from('notes')
+      .whereRaw(`LOWER(title) LIKE '%${searchTerm.toLowerCase()}%'`)
+      .orWhereRaw(`LOWER(content) LIKE '%${searchTerm.toLowerCase()}%'`)
+  }
+}
+
+deathNotes.searchNote(searchTerm)
+  .then(res => {
+    console.log(res)
+  })
+  .catch(err => {
+    console.log(err)}
+  )
+
 
 // // find one item
 
@@ -53,11 +61,11 @@ console.log('..............')
 
 // //delete by id
 // const matchedId = 5
-knex('notes')
-  .where({id: matchedId})
-  .del()
-  .then(res => console.log(res))
-  .catch(err => console.log(err))
+// knex('notes')
+//   .where({id: matchedId})
+//   .del()
+//   .then(res => console.log(res))
+//   .catch(err => console.log(err))
 
 
 knex.destroy().then(() => {
