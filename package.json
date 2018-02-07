@@ -13,8 +13,10 @@
 	},
 	"dependencies": {
 		"express": "^4.16.2",
+		"morgan": "^1.9.0"
+	},
+	"devDependencies": {
 		"knex": "^0.14.2",
-		"morgan": "^1.9.0",
 		"pg": "^7.4.1"
 	}
 }
