@@ -1,56 +1,48 @@
 
 const knex = require('../knex.js')
-process.stdout.write('\x1Bc');
+const Treeize = require('treeize')
+
 console.log('..............')
 console.log('..............')
 console.log('..............')
 
-//get all folders
-const searchTerm = 'Per'
+const newNote = {
+  title:'5 life lessons learned from cats',
+  content:'Lorem ipsum dolor',
+  folder_id:null
+}
+const tags = [1,2]
+
+let noteId
+
 knex
-  .select()
-  .from('folders')
-  .where( function() {
-    if(searchTerm){
-      this.where('name','like',`%${searchTerm}%`)
-    }
+  .insert(newNote)
+  .into('notes')
+  .returning(['id'])
+  .then(result => {
+    noteId = result[0].id
+    const tagsInsert = tags.map(tagId =>({note_id: noteId,tag_id: tagId}))
+    return knex.insert(tagsInsert)
+      .into('notes_tags')
   })
-  .then(res => console.log(res))
-  .catch(err => console.log(err))
+  .then(() => {
+    return knex
+      .select('notes.id as note_id','tags.id')
+      .from('notes')
+      .leftJoin('folders','folders.id','notes.folder_id')
+      .leftJoin('notes_tags','notes_tags.note_id','notes.id')
+      .leftJoin('tags','tags.id','notes_tags.tag_id')
+      .where('notes.id',noteId)
+  })
+  .then(result => {
+    const treeize = new Treeize()
+    treeize.grow(result)
+    const hydrated = treeize.getData()
+    console.log(hydrated)
+    return knex.destroy()
 
-// get folder by id
-// knex
-//   .select()
-//   .from('folders')
-//   .where({id: 100})
-//   .then(res => console.log(res))
-//   .catch(err => console.log(err))
-
-//update folder by id
-// const dummyObj = {name:'Archive2'}
-// knex('folders')
-//   .update(dummyObj)
-//   .where({id:100})
-//   .returning(['id','name'])
-//   .then(res => console.log(res))
-//   .catch(err => console.log(err))
-
-// create new folder
-// const newItem = {name: 'newFolder5'}
-// knex('folders')
-//   .insert(newItem)
-//   .returning(['id','name'])
-//   .then(res => console.log(res))
-//   .catch(err => console.log(err))
-
-//deletef folder
-// knex('folders')
-//   .where({id:110})
-//   .del()
-//   .then(res => console.log(res))
-//   .catch(err => console.log(err))
-
-//
-knex.destroy().then(() => {
-  console.log('database connection closed');
-});
+  })
+  .catch(err => {
+    console.log(err)
+  })
+  

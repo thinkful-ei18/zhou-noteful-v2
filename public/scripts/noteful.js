@@ -6,15 +6,40 @@ const noteful = (function () {
   function render() {    
     const notesList = generateNotesList(store.notes, store.currentNote);
     $('.js-notes-list').html(notesList);
+    const folderList = generateFolderList(store.folders, store.currentQuery);
+    $('.js-folders-list').html(folderList);
+    const folderSelect = generateFolderSelect(store.folders);
+    $('.js-note-folder-entry').html(folderSelect);
 
     const editForm = $('.js-note-edit-form');
     editForm.find('.js-note-title-entry').val(store.currentNote.title);
-    editForm.find('.js-note-content-entry').val(store.currentNote.content);
+    editForm.find('.js-note-content-entry').val(store.currentNote.content)
+    editForm.find('.js-note-folder-entry').val(store.currentNote.folder_id);
   }
 
   /**
    * GENERATE HTML FUNCTIONS
    */
+  function generateFolderList(list, currQuery) {
+    const showAllItem = `
+      <li data-id="" class="js-folder-item ${!currQuery.folderId ? 'active' : ''}">
+        <a href="#" class="name js-folder-link">All</a>
+      </li>`;
+
+    const listItems = list.map(item => `
+      <li data-id="${item.id}" class="js-folder-item ${currQuery.folderId === item.id ? 'active' : ''}">
+        <a href="#" class="name js-folder-link">${item.name}</a>
+        <button class="removeBtn js-folder-delete">X</button>
+      </li>`);
+
+    return [showAllItem, listItems].join('');
+  }
+
+  function generateFolderSelect(list) {
+    const notes = list.map(item => `<option value="${item.id}">${item.name}</option>`);
+    return '<option value="">Select Folder:</option>' + notes.join('');
+  }
+
   function generateNotesList(list, currNote) {
     const listItems = list.map(item => `
       <li data-id="${item.id}" class="js-note-element ${currNote.id === item.id ? 'active' : ''}">
@@ -38,6 +63,25 @@ const noteful = (function () {
   /**
    * NOTES EVENT LISTENERS AND HANDLERS
    */
+
+  function handleFolderClick() {
+    $('.js-folders-list').on('click', '.js-folder-link', event => {
+      event.preventDefault();
+
+      const folderId = getFolderIdFromElement(event.currentTarget);
+      store.currentQuery.folderId = folderId;
+      if (folderId !== store.currentNote.folder_id) {
+        store.currentNote = {};
+      }
+
+      api.search('/v2/notes', store.currentQuery)
+        .then(response => {
+          store.notes = response;
+          render();
+        });
+    });
+  }
+  
   function handleNoteItemClick() {
     $('.js-notes-list').on('click', '.js-note-link', event => {
       event.preventDefault();

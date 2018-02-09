@@ -1,24 +1,15 @@
 'use strict';
 const knex = require('../knex.js')
-const express = require('express');
-
-// Create an router instance (aka "mini-app")
+const express = require('express')
 const router = express.Router();
+const Treeize = require('treeize')
 
-// TEMP: Simple In-Memory Database
-/* 
-const data = require('../db/notes');
-const simDB = require('../db/simDB');
-const notes = simDB.initialize(data);
-*/
 
 // Get All (and search by query)
 /* ========== GET/READ ALL NOTES ========== */
 router.get('/notes', (req, res, next) => {
-  const {searchTerm, folderId} = req.query
-  knex.select('notes.id', 'title', 'content', 'folder_id', 'folders.name as folder_name')
-    .from('notes')
-    .leftJoin('folders', 'notes.folder_id', 'folders.id')
+  const {searchTerm, folderId, tagId} = req.query
+  Helper.noteSubQuery()
     .where(function () {
       if (searchTerm) {
         this.where('title', 'like', `%${searchTerm}%`);
@@ -29,27 +20,32 @@ router.get('/notes', (req, res, next) => {
         this.where('folder_id',folderId)
       }
     })
+    .where(function() {
+      if(tagId) {
+        const subQuery = knex.select('notes.id')
+          .from('notes')
+          .leftJoin('notes_tags','notes.id','notes_tags.note_id')
+          .where('notes_tags.tag_id',tagId)
+
+        this.whereIn('notes.id',subQuery) // key in array
+      }
+    })
     .orderBy('notes.id')
     .then(results => {
-      res.json(results);
+      res.status(200).json(Helper.hydration(results))
     })
     .catch(err => {
-      console.error(err);
+      next(err)
     });
-});
+})
 
 /* ========== GET/READ SINGLE NOTES ========== */
 router.get('/notes/:id', (req, res, next) => {
   const noteId = req.params.id;
-  knex
-    .select('id as note_id','title','content','folder_id',
-      'folders.name as folder_name')
-    .from('notes')
-    .join('folders','')
-    .where({id:noteId})
+  Helper.noteSubQuery(noteId)
     .then(note => {
       if(note.length !==0){
-        res.status(200).json(note[0])
+        res.status(200).json(Helper.hydration(note))
       }else{
         const err = new Error('Dot not find id')
         err.status = 400
@@ -58,65 +54,111 @@ router.get('/notes/:id', (req, res, next) => {
       }
     })
     .catch(err => next(err))
-});
+})
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/notes/:id', (req, res, next) => {
-  const noteId = req.params.id;
-  /***** Never trust users - validate input *****/
-  const updateObj = {};
-  const updateableFields = ['title', 'content'];
-
-  updateableFields.forEach(field => {
-    if (field in req.body) {
-      updateObj[field] = req.body[field];
-    }
-  });
-
-  /***** Never trust users - validate input *****/
-  if (!updateObj.title) {
-    const err = new Error('Missing `title` in request body');
-    err.status = 400;
-    return next(err);
+  const noteId = req.params.id
+  const {title, content, folder_id, tags} = req.body
+  const updateObj = {
+    title,
+    content,
+    folder_id
   }
-  knex('notes')
-    .update(updateObj)
-    .where({id: noteId})
-    .returning(['id','title','content','created'])
-    .then(updateNotes => {
-      res.status(201).json(updateNotes)
+
+  knex
+    .update(updateObj) //update notes
+    .into('notes')
+    .then( ()=>{  //delete old junctions
+      return knex.del()
+        .from('notes_tags')
+        .where('notes_tags.note_id',noteId)
     })
-});
+    .then(()=> { //insert new junctions
+      const pairs = tags.map( tag => {
+        return({
+          tag_id:tag,
+          note_id:noteId
+        })
+      })
+      return knex('notes_tags').insert(pairs)
+    })
+    .then(()=>{ //build queries
+      return Helper.noteSubQuery(noteId)
+    })
+    .then(result => {
+      if(result.length > 0){
+        res.location(`${req.originalUrl}/${result[0].note_id}`)
+          .status(201)
+          .json(Helper.hydration(result))
+      }else{
+        next()
+      }
+    })
+    .catch(err => next(err))
+})
 
 /* ========== POST/CREATE ITEM ========== */
 router.post('/notes', (req, res, next) => {
-  const { title, content } = req.body;
-  
-  const newItem = { title, content };
+  const {title, content, folder_id, tags} = req.body;
+  let noteId;
+  const newNote = {title, content, folder_id}
+
   /***** Never trust users - validate input *****/
-  if (!newItem.title) {
+  if (!newNote.title){
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
   }
-  
-  knex('notes')
-    .insert(newItem)
-    .returning(['id','created','title','content'])
-    .then(knex_res => {
-      res.status(201).json(knex_res[0])
+  knex
+    .insert(newNote)
+    .into('notes')
+    .returning(['id'])
+    .then(result => {
+      noteId = result[0].id
+      const tagsInsert = tags.map(tagId =>({note_id: noteId,tag_id: tagId}))
+      return knex.insert(tagsInsert)
+        .into('notes_tags')
     })
-    .catch(next)
-});
+    .then(() => {
+      return Helper.noteSubQuery(noteId)
+    })
+    .then(result => {
+      res.location(`${req.originalUrl}/${result[0].note_id}`).status(201).json(Helper.hydration(result))
+    })
+    .catch(err => next(err))
+})
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
 router.delete('/notes/:id', (req, res, next) => {
-  const id = req.params.id;
+  const id = req.params.id
   knex('notes')
     .where({id: id})
     .del()
     .then(knex_res => res.status(200).json({message:'remove success'}))
     .catch(next)
-});
+})
 
-module.exports = router;
+const Helper = {
+  noteSubQuery(noteId = null){
+    return knex
+      .select('notes.id as note_id','title','content','notes.folder_id as folder_id',
+        'folders.name as folder_name',
+        'tags.id as tag_id','tags.name as tag_name')
+      .from('notes')
+      .leftJoin('folders','notes.folder_id','folders.id')
+      .innerJoin('notes_tags','notes.id','notes_tags.note_id')
+      .leftJoin('tags','notes_tags.tag_id','tags.id')
+      .where(function(){
+        if(noteId){
+          this.where('notes.id',noteId)
+        }
+      })
+  },
+  hydration(result){
+    const treeize = new Treeize()
+    treeize.grow(result)
+    return treeize.getData()
+  }
+}
+module.exports = router

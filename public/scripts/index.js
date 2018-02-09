@@ -3,12 +3,14 @@
 
 $(document).ready(function () {
   noteful.bindEventListeners();
-
   api.search('/v2/notes')
-    .then(response => {
-      store.notes = response;
+    .then(notes => {
+      store.notes = notes
+    })
+    .then( ()=> {api.search('/v2/folders'})
+    .then(folders => {
+      store.folders = folders
       noteful.render();
     });
-
 });
 
