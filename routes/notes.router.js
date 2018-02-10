@@ -100,7 +100,7 @@ router.put('/notes/:id', (req, res, next) => {
 
 /* ========== POST/CREATE ITEM ========== */
 router.post('/notes', (req, res, next) => {
-  const {title, content, folder_id, tags} = req.body;
+  const {title, content, folder_id, tags=[]} = req.body;
   let noteId;
   const newNote = {title, content, folder_id}
 
@@ -124,7 +124,7 @@ router.post('/notes', (req, res, next) => {
       return Helper.noteSubQuery(noteId)
     })
     .then(result => {
-      res.location(`${req.originalUrl}/${result[0].note_id}`).status(201).json(Helper.hydration(result))
+      res.location(`${req.originalUrl}/${result[0].note_id}`).status(201).json(Helper.hydration(result)[0])
     })
     .catch(err => next(err))
 })
@@ -142,12 +142,12 @@ router.delete('/notes/:id', (req, res, next) => {
 const Helper = {
   noteSubQuery(noteId = null){
     return knex
-      .select('notes.id as note_id','title','content','notes.folder_id as folder_id',
+      .select('notes.id as id','title','content','notes.folder_id as folder_id',
         'folders.name as folder_name',
         'tags.id as tag_id','tags.name as tag_name')
       .from('notes')
       .leftJoin('folders','notes.folder_id','folders.id')
-      .innerJoin('notes_tags','notes.id','notes_tags.note_id')
+      .leftJoin('notes_tags','notes.id','notes_tags.note_id')
       .leftJoin('tags','notes_tags.tag_id','tags.id')
       .where(function(){
         if(noteId){
@@ -156,9 +156,22 @@ const Helper = {
       })
   },
   hydration(result){
-    const treeize = new Treeize()
-    treeize.grow(result)
-    return treeize.getData()
+    const arr = []
+    const obj = {}
+    for(let item of result){
+      if(!obj[item.id]){
+        obj[item.id] = item
+        obj[item.id].tags = []
+        arr.push(obj[item.id])
+      }
+      if(item.tag_id){
+        const tag = {id: item.tag_id, name: item.tag_name}
+        obj[item.id].tags.push(tag)
+        delete obj[item.id].tag_id
+        delete obj[item.id].tag_name
+      }
+    }
+    return arr
   }
 }
 module.exports = router
