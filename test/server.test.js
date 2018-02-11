@@ -1,3 +1,4 @@
+
 const app = require('../server');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
@@ -10,22 +11,22 @@ const knex = require('../knex');
 const seedData = require('../db/seed/index');
 
 before(function () {
-  console.log('before hook')
+  // console.log('before hook')
   // noop
 });
 
 beforeEach(function () {
-  console.log('before each test run seeding')
+  // console.log('before each test run seeding')
   return seedData();
 });
 
 afterEach(function () {
-  console.log('after each test')
+  // console.log('after each test')
   // noop
 });
 
 after(function () {
-  console.log('after all test complete shut knex')
+  // console.log('after all test complete shut knex')
   // destroy the connection
   return knex.destroy();
 });

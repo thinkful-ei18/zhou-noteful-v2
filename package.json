@@ -8,11 +8,19 @@
 		"url": "git+https://github.com/cklanac/noteful-app.git"
 	},
 	"main": "server.js",
+	"config": {
+		"blanket": {
+			"pattern": [
+				"/routes/"
+			]
+		}
+	},
 	"scripts": {
 		"start": "node server.js",
-		"test": "cross-env NODE_ENV=test mocha --exit"
+		"test": "cross-env NODE_ENV=test nyc --reporter=lcov mocha --exit"
 	},
 	"dependencies": {
+		"blanket": "^1.2.3",
 		"chai": "^4.1.2",
 		"chai-http": "^3.0.0",
 		"chai-spies": "^1.0.0",
@@ -24,6 +32,7 @@
 	"devDependencies": {
 		"cross-env": "^5.1.3",
 		"knex": "^0.14.2",
+		"nyc": "^11.4.1",
 		"pg": "^7.4.1",
 		"treeize": "^2.1.2"
 	}
