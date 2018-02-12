@@ -12,6 +12,6 @@ module.exports = {
   },
   production: {
     client: 'pg',
-    connection: '	postgres://bmvypusz:k7U3oCNM635KYnD7oCdPXbRMAIPeQf0K@baasu.db.elephantsql.com:5432/bmvypusz'
+    connection:'postgres://bmvypusz:k7U3oCNM635KYnD7oCdPXbRMAIPeQf0K@baasu.db.elephantsql.com:5432/bmvypusz'
   }
 };
