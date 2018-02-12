@@ -8,8 +8,9 @@ const store = (function () {
     folders:[],
     currentNote: {},
     currentQuery: {
-      searchTerm: '',
-    }
+      searchTerm: ''
+    },
+    tags:[]
   };
 
 }());

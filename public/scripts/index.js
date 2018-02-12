@@ -7,10 +7,14 @@ $(document).ready(function () {
     .then(notes => {
       store.notes = notes
     })
-    .then( ()=> {api.search('/v2/folders'})
+    .then( ()=>api.search('/v2/folders'))
     .then(folders => {
       store.folders = folders
-      noteful.render();
-    });
+    })
+    .then(()=>api.search('/v2/tags'))
+    .then(tags => {
+      store.tags = tags
+      noteful.render()
+    })
 });
 

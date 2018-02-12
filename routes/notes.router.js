@@ -45,7 +45,7 @@ router.get('/notes/:id', (req, res, next) => {
   Helper.noteSubQuery(noteId)
     .then(note => {
       if(note.length !==0){
-        res.status(200).json(Helper.hydration(note))
+        res.status(200).json(Helper.hydration(note)[0])
       }else{
         const err = new Error('Dot not find id')
         err.status = 400
@@ -69,6 +69,7 @@ router.put('/notes/:id', (req, res, next) => {
   knex
     .update(updateObj) //update notes
     .into('notes')
+    .where('notes.id',req.params.id)
     .then( ()=>{  //delete old junctions
       return knex.del()
         .from('notes_tags')
@@ -90,7 +91,7 @@ router.put('/notes/:id', (req, res, next) => {
       if(result.length > 0){
         res.location(`${req.originalUrl}/${result[0].note_id}`)
           .status(201)
-          .json(Helper.hydration(result))
+          .json(Helper.hydration(result)[0])
       }else{
         next()
       }
